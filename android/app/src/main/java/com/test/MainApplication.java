@@ -1,4 +1,4 @@
-package com.movesensebluetoothsensor;
+package com.test;
 
 import android.app.Application;
 import android.content.Context;

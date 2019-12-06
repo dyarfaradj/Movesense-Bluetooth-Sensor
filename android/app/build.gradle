@@ -128,7 +128,7 @@ android {
     }
 
     defaultConfig {
-        applicationId "com.movesensebluetoothsensor"
+        applicationId "com.test"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
