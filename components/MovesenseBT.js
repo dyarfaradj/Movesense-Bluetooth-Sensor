@@ -10,12 +10,8 @@ export default class MovesenseBT extends Component {
     this.prefixUUID = 'f000aa';
     this.suffixUUID = '-0451-4000-b000-000000000000';
     this.sensors = {
-      0: 'Temperature',
-      1: 'Accelerometer',
-      2: 'Humidity',
-      3: 'Magnetometer',
-      4: 'Barometer',
-      5: 'Gyroscope',
+      0: 'Accelerometer',
+      1: 'Gyroscope',
     };
   }
 
@@ -35,8 +31,9 @@ export default class MovesenseBT extends Component {
     this.setState({info: message});
   }
 
-  error(message) {
+  error(message, device) {
     this.setState({info: 'ERROR: ' + message});
+    device.cancelConnection();
   }
 
   updateValue(key, value) {
@@ -60,7 +57,6 @@ export default class MovesenseBT extends Component {
         this.error(error.message);
         return;
       }
-      console.log(device);
       if (
         device.name === 'Movesense 192830000232' ||
         device.name === 'Movesense'
@@ -70,6 +66,7 @@ export default class MovesenseBT extends Component {
         device
           .connect()
           .then(device => {
+            console.log(device);
             this.info('Discovering services and characteristics');
             return device.discoverAllServicesAndCharacteristics();
           })
@@ -82,7 +79,7 @@ export default class MovesenseBT extends Component {
               this.info('Listening...');
             },
             error => {
-              this.error(error.message);
+              this.error(error.message, device);
             },
           );
       }
@@ -91,9 +88,9 @@ export default class MovesenseBT extends Component {
 
   async setupNotifications(device) {
     for (const id in this.sensors) {
-      const service = this.serviceUUID(id);
-      const characteristicW = this.writeUUID(id);
-      const characteristicN = this.notifyUUID(id);
+      const service = '00001809-0000-1000-8000-00805f9b34fb';
+      const characteristicW = '00002a00-0000-1000-8000-00805f9b34fb';
+      const characteristicN = '00002a00-0000-1000-8000-00805f9b34fb';
 
       const characteristic = await device.writeCharacteristicWithResponseForService(
         service,
