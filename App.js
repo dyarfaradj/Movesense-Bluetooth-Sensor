@@ -23,7 +23,7 @@ import {
   DebugInstructions,
   ReloadInstructions,
 } from 'react-native/Libraries/NewAppScreen';
-import MovesenseBT2 from './components/MovesenseBT2';
+import MovesenseBT from './components/MovesenseBT';
 
 const App: () => React$Node = () => {
   return (
@@ -39,7 +39,7 @@ const App: () => React$Node = () => {
               <Text style={styles.footer}>Engine: Hermes</Text>
             </View>
           )}
-          <MovesenseBT2 />
+          <MovesenseBT />
         </ScrollView>
       </SafeAreaView>
     </>
