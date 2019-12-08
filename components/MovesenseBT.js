@@ -65,29 +65,29 @@ export default class MovesenseBT extends Component {
     });
   }
 
-  async test(device) {
-    const service = '61353090-8231-49cc-b57a-886370740041';
-    const characteristicW = '00002a1c-0000-1000-8000-00805f9b34fb';
-    const characteristicN = '00002a1c-0000-1000-8000-00805f9b34fb';
+  // async test(device) {
+  //   const service = '00001809-0000-1000-8000-00805f9b34fb';
+  //   const characteristicW = '00002a21-0000-1000-8000-00805f9b34fb';
+  //   const characteristicN = '00002a21-0000-1000-8000-00805f9b34fb';
 
-    const characteristic = await device.writeCharacteristicWithResponseForService(
-      service,
-      characteristicW,
-      'AQ==' /* 0x01 in hex */,
-    );
+  //   const characteristic = await device.writeCharacteristicWithResponseForService(
+  //     service,
+  //     characteristicW,
+  //     'AQ==' /* 0x01 in hex */,
+  //   );
 
-    device.monitorCharacteristicForService(
-      service,
-      characteristicN,
-      (error, characteristic) => {
-        if (error) {
-          this.error(error.message);
-          return;
-        }
-        this.updateValue(characteristic.uuid, characteristic.value);
-      },
-    );
-  }
+  //   device.monitorCharacteristicForService(
+  //     service,
+  //     characteristicN,
+  //     (error, characteristic) => {
+  //       if (error) {
+  //         this.error(error.message);
+  //         return;
+  //       }
+  //       this.updateValue(characteristic.uuid, characteristic.value);
+  //     },
+  //   );
+  // }
 
   async connectToDevice(item) {
     console.log(item);
