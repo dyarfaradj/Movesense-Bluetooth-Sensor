@@ -1,22 +1,24 @@
 import React, {Component} from 'react';
-import {Platform, View, Text} from 'react-native';
+import {Platform, View, Text, Button} from 'react-native';
 import {BleManager} from 'react-native-ble-plx';
-import {Buffer} from 'buffer';
-import base64 from 'react-native-base64';
-// var base64 = require('base-64');
 
 export default class MovesenseBT extends Component {
   constructor() {
     super();
     this.manager = new BleManager();
     this.state = {
+      deviceId: '',
+      scanning: false,
       info: '',
-      xAccNy: '',
-      yAccNy: '',
-      zAccNy: '',
-      xGyroNy: '',
-      yGyroNy: '',
-      zGyroNy: '',
+      xAccNy: 0,
+      yAccNy: 0,
+      zAccNy: 0,
+      xGyroNy: 0,
+      yGyroNy: 0,
+      zGyroNy: 0,
+      lastX: 0,
+      lastY: 0,
+      lastZ: 0,
     };
     this.sensors = {
       0: 'Accelerometer',
@@ -37,16 +39,6 @@ export default class MovesenseBT extends Component {
     this.setState({values: {...this.state.values, [key]: value}});
   }
 
-  UNSAFE_componentWillMount() {
-    if (Platform.OS === 'ios') {
-      this.manager.onStateChange(state => {
-        if (state === 'PoweredOn') this.scanAndConnect();
-      });
-    } else {
-      this.scanAndConnect();
-    }
-  }
-
   scanAndConnect() {
     this.manager.startDeviceScan(null, null, (error, device) => {
       this.info('Scanning...');
@@ -61,6 +53,8 @@ export default class MovesenseBT extends Component {
 
   async connectToDevice(item) {
     alert('Connecting to ' + item.name);
+    this.setState({deviceId: item.id, scanning: false});
+
     const {id} = await this.manager.connectToDevice(item.id);
 
     const device = await this.manager.discoverAllServicesAndCharacteristicsForDevice(
@@ -68,6 +62,7 @@ export default class MovesenseBT extends Component {
     );
 
     const wasConnected = await device.isConnected();
+    this.deviceList = [{}];
 
     const services = await device.services();
 
@@ -167,6 +162,7 @@ export default class MovesenseBT extends Component {
     let xGyroNy = this.convert16bitIntToFloat(arr16[4]); // microtestla
     let yGyroNy = this.convert16bitIntToFloat(arr16[5]);
     let zGyroNy = this.convert16bitIntToFloat(arr16[6]);
+
     this.setState({
       xAccNy: xAccNy,
       yAccNy: yAccNy,
@@ -196,12 +192,77 @@ export default class MovesenseBT extends Component {
     return (num * SPAN) / NR_SIZE - SPAN / 2;
   }
 
+  handleStart = () => {
+    if (!this.state.scanning) {
+      this.setState({scanning: true});
+      if (Platform.OS === 'ios') {
+        this.manager.onStateChange(state => {
+          if (state === 'PoweredOn') this.scanAndConnect();
+        });
+      } else {
+        this.scanAndConnect();
+      }
+    } else {
+      alert('Scan is already running!');
+    }
+  };
+
+  handleStop = async () => {
+    const isConnected = await this.manager.isDeviceConnected(
+      this.state.deviceId,
+    );
+    if (isConnected) {
+      this.manager.cancelDeviceConnection(this.state.deviceId);
+      this.deviceList = [{}];
+    }
+  };
+
+  calculateAndFilter(x, y, z, yGyroNy) {
+    let a = 0.1;
+    x = (1 - a) * lastX + a * x;
+    y = (1 - a) * lastY + a * y;
+    z = (1 - a) * lastZ + a * z;
+    this.setState({lastX: x, lastY: y, lastZ: z});
+
+    let beta = 0.1;
+    let dT = 1 / 52;
+    let pitch = (180 * Math.atan(x / sqrt(y * y + z * z))) / Math.PI;
+    this.setState({
+      Cpitch: (1 - beta) * (this.state.Cpitch - dT * yGyroNy) + beta * pitch,
+    });
+    return this.state.Cpitch;
+  }
+
   render() {
+    let {xAccNy, yAccNy, zAccNy, xGyroNy, yGyroNy, zGyroNy} = this.state;
+    xAccNy = parseFloat(xAccNy).toFixed(3);
+    yAccNy = parseFloat(yAccNy).toFixed(3);
+    zAccNy = parseFloat(zAccNy).toFixed(3);
+    xGyroNy = parseFloat(xGyroNy).toFixed(3);
+    yGyroNy = parseFloat(yGyroNy).toFixed(3);
+    zGyroNy = parseFloat(zGyroNy).toFixed(3);
     return (
       <View>
         <Text>{this.state.info}</Text>
-        <Text>{this.sensors[0] + ': ' + this.state.xAccNy}</Text>
-        <Text>{this.sensors[1] + ': ' + this.state.xGyroNy}</Text>
+        <Text>
+          {this.sensors[0] +
+            ': X: ' +
+            xAccNy +
+            ' Y: ' +
+            yAccNy +
+            ' Z: ' +
+            zAccNy}
+        </Text>
+        <Text>
+          {this.sensors[1] +
+            ': X: ' +
+            xGyroNy +
+            ' Y: ' +
+            yGyroNy +
+            ' Z: ' +
+            zGyroNy}
+        </Text>
+        <Text>Device list: </Text>
         {this.deviceList &&
           this.deviceList.map((item, i) => {
             return (
@@ -211,6 +272,8 @@ export default class MovesenseBT extends Component {
               </Text>
             );
           })}
+        <Button onPress={this.handleStart} title="Start scan!" color="green" />
+        <Button onPress={this.handleStop} title="Stop!" color="red" />
       </View>
     );
   }
