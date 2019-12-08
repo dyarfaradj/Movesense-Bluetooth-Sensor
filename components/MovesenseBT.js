@@ -2,33 +2,27 @@ import React, {Component} from 'react';
 import {Platform, View, Text} from 'react-native';
 import {BleManager} from 'react-native-ble-plx';
 import {Buffer} from 'buffer';
-// import base64 from 'react-native-base64';
+import base64 from 'react-native-base64';
 // var base64 = require('base-64');
 
 export default class MovesenseBT extends Component {
   constructor() {
     super();
     this.manager = new BleManager();
-    this.state = {info: '', values: {}};
-    this.prefixUUID = 'f000aa';
-    this.suffixUUID = '-0451-4000-b000-000000000000';
+    this.state = {
+      info: '',
+      xAccNy: '',
+      yAccNy: '',
+      zAccNy: '',
+      xGyroNy: '',
+      yGyroNy: '',
+      zGyroNy: '',
+    };
     this.sensors = {
       0: 'Accelerometer',
-      2: 'Gyroscope',
+      1: 'Gyroscope',
     };
     this.deviceList = [{}];
-  }
-
-  serviceUUID(num) {
-    return this.prefixUUID + num + '0' + this.suffixUUID;
-  }
-
-  notifyUUID(num) {
-    return this.prefixUUID + num + '1' + this.suffixUUID;
-  }
-
-  writeUUID(num) {
-    return this.prefixUUID + num + '2' + this.suffixUUID;
   }
 
   info(message) {
@@ -66,7 +60,7 @@ export default class MovesenseBT extends Component {
   }
 
   async connectToDevice(item) {
-    console.log(item);
+    alert('Connecting to ' + item.name);
     const {id} = await this.manager.connectToDevice(item.id);
 
     const device = await this.manager.discoverAllServicesAndCharacteristicsForDevice(
@@ -75,11 +69,6 @@ export default class MovesenseBT extends Component {
 
     const wasConnected = await device.isConnected();
 
-    // if (wasConnected) {
-    //   storeDevice(device);
-    // }
-
-    // todo - temp for test
     const services = await device.services();
 
     const charPromises = services.map(service => service.characteristics());
@@ -95,19 +84,10 @@ export default class MovesenseBT extends Component {
     const characteristicW = '00002a21-0000-1000-8000-00805f9b34fb';
     const characteristicN = '00002a1c-0000-1000-8000-00805f9b34fb';
 
-    console.log(Uint16Array.of(902));
-
-    // const characteristic = await .writeCharacteristicWithResponseForDevice(
-    //   device,
-    //   service,
-    //   characteristicW,
-    //   'OTAy',
-    // );
-
     const characteristic = await device.writeCharacteristicWithResponseForService(
       service,
       characteristicW,
-      'OTAy' /* 0x01 in hex */, //zoY=
+      'hgM=' /* 0x01 in hex */, //zoY=
     );
 
     device.monitorCharacteristicForService(
@@ -118,16 +98,7 @@ export default class MovesenseBT extends Component {
           this.error(error.message);
           return;
         }
-        // const bytes = base64.toByteArray(characteristic.value);
-        // const view = new DataView(bytes.buffer);
-        // const value = view.getFloat32();
-
-        // const buffer = new Buffer(characteristic.value, 'base64');
-        // const bufStr = buffer;
-
-        const value = this.b64toBlob(characteristic.value, 'image/jpeg;base64');
-        // console.log('AAAA: ' + characteristic.uuid + ' VALUE: ' + value);
-        this.updateValue(characteristic.uuid, characteristic.value);
+        this.b64toBlob(characteristic.value, 'image/jpeg;base64');
       },
     );
   }
@@ -162,18 +133,13 @@ export default class MovesenseBT extends Component {
 
     for (let offset = 0; offset < byteCharacters.length; offset += sliceSize) {
       const slice = byteCharacters.slice(offset, offset + sliceSize);
-
       const byteNumbers = new Array(slice.length);
       for (let i = 0; i < slice.length; i++) {
         byteNumbers[i] = slice.charCodeAt(i);
       }
-
       const byteArray = new Uint8Array(byteNumbers);
-
       byteArrays.push(byteArray);
     }
-
-    // console.log('LL: ' + byteArrays);
 
     this.convertUint8ToUintArray16Array(byteArrays[0]);
 
@@ -201,9 +167,16 @@ export default class MovesenseBT extends Component {
     let xGyroNy = this.convert16bitIntToFloat(arr16[4]); // microtestla
     let yGyroNy = this.convert16bitIntToFloat(arr16[5]);
     let zGyroNy = this.convert16bitIntToFloat(arr16[6]);
+    this.setState({
+      xAccNy: xAccNy,
+      yAccNy: yAccNy,
+      zAccNy: zAccNy,
+      xGyroNy: xGyroNy,
+      yGyroNy: yGyroNy,
+      zGyroNy: zGyroNy,
+    });
 
-    console.log(xAccNy, yAccNy, zAccNy, xGyroNy, yGyroNy, zGyroNy);
-    // console.log('arr: ' + arr16);
+    //console.log(xAccNy, yAccNy, zAccNy, xGyroNy, yGyroNy, zGyroNy);
     return arr16;
   }
 
@@ -211,7 +184,6 @@ export default class MovesenseBT extends Component {
     console.log(typeof byteArray);
     var uint8Array = new Uint8Array(byteArray.length);
     for (var i = 0; i < uint8Array.length; i++) {
-      console.log('LALAL: ' + byteArray[i]);
       uint8Array[i] = byteArray[i];
     }
 
@@ -228,15 +200,8 @@ export default class MovesenseBT extends Component {
     return (
       <View>
         <Text>{this.state.info}</Text>
-        {Object.keys(this.sensors).map(key => {
-          return (
-            <Text key={key}>
-              {this.sensors[key] +
-                ': ' +
-                (this.state.values[this.notifyUUID(key)] || '-')}
-            </Text>
-          );
-        })}
+        <Text>{this.sensors[0] + ': ' + this.state.xAccNy}</Text>
+        <Text>{this.sensors[1] + ': ' + this.state.xGyroNy}</Text>
         {this.deviceList &&
           this.deviceList.map((item, i) => {
             return (
