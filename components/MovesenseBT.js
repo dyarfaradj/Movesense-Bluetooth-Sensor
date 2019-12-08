@@ -95,10 +95,11 @@ export default class MovesenseBT extends Component {
     const characteristicW = '00002a21-0000-1000-8000-00805f9b34fb';
     const characteristicN = '00002a1c-0000-1000-8000-00805f9b34fb';
 
+    console.log(Uint16Array.of(902));
     const characteristic = await device.writeCharacteristicWithResponseForService(
       service,
       characteristicW,
-      'zoY=' /* 0x01 in hex */,
+      'OTAy' /* 0x01 in hex */, //zoY=
     );
 
     device.monitorCharacteristicForService(
