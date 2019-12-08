@@ -96,6 +96,14 @@ export default class MovesenseBT extends Component {
     const characteristicN = '00002a1c-0000-1000-8000-00805f9b34fb';
 
     console.log(Uint16Array.of(902));
+
+    // const characteristic = await .writeCharacteristicWithResponseForDevice(
+    //   device,
+    //   service,
+    //   characteristicW,
+    //   'OTAy',
+    // );
+
     const characteristic = await device.writeCharacteristicWithResponseForService(
       service,
       characteristicW,
