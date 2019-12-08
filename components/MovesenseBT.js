@@ -24,7 +24,7 @@ export default class MovesenseBT extends Component {
       0: 'Accelerometer',
       1: 'Gyroscope',
     };
-    this.deviceList = [{}];
+    this.deviceList = [];
   }
 
   info(message) {
@@ -47,7 +47,11 @@ export default class MovesenseBT extends Component {
         return;
       }
       var found = this.deviceList.some(item => item.name === device.name);
-      if (!found) this.deviceList.push({name: device.name, id: device.id});
+      if (!found) {
+        let deviceName = device.name;
+        if (deviceName && deviceName.includes('Movesense'))
+          this.deviceList.push({name: device.name, id: device.id});
+      }
     });
   }
 
@@ -62,7 +66,7 @@ export default class MovesenseBT extends Component {
     );
 
     const wasConnected = await device.isConnected();
-    this.deviceList = [{}];
+    this.deviceList = [];
 
     const services = await device.services();
 
@@ -213,11 +217,11 @@ export default class MovesenseBT extends Component {
     );
     if (isConnected) {
       this.manager.cancelDeviceConnection(this.state.deviceId);
-      this.deviceList = [{}];
+      this.deviceList = [];
     }
   };
 
-  calculateAndFilter(x, y, z, yGyroNy) {
+  calculateValue(x, y, z, yGyroNy) {
     let a = 0.1;
     x = (1 - a) * lastX + a * x;
     y = (1 - a) * lastY + a * y;
@@ -235,6 +239,7 @@ export default class MovesenseBT extends Component {
 
   render() {
     let {xAccNy, yAccNy, zAccNy, xGyroNy, yGyroNy, zGyroNy} = this.state;
+    let tiltVal = 0; //this.calculateValue();
     xAccNy = parseFloat(xAccNy).toFixed(3);
     yAccNy = parseFloat(yAccNy).toFixed(3);
     zAccNy = parseFloat(zAccNy).toFixed(3);
@@ -266,7 +271,15 @@ export default class MovesenseBT extends Component {
         {this.deviceList &&
           this.deviceList.map((item, i) => {
             return (
-              <Text key={i} onPress={() => this.connectToDevice(item)}>
+              <Text
+                style={{
+                  color: 'blue',
+                  borderColor: 'red',
+                  borderWidth: 1,
+                  margin: 20,
+                }}
+                key={i}
+                onPress={() => this.connectToDevice(item)}>
                 {' '}
                 {item.name}{' '}
               </Text>
@@ -274,6 +287,7 @@ export default class MovesenseBT extends Component {
           })}
         <Button onPress={this.handleStart} title="Start scan!" color="green" />
         <Button onPress={this.handleStop} title="Stop!" color="red" />
+        <Text>{tiltVal}</Text>
       </View>
     );
   }
