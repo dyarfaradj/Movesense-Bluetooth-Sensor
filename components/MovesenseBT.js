@@ -1,6 +1,9 @@
 import React, {Component} from 'react';
 import {Platform, View, Text} from 'react-native';
 import {BleManager} from 'react-native-ble-plx';
+import {Buffer} from 'buffer';
+// import base64 from 'react-native-base64';
+// var base64 = require('base-64');
 
 export default class MovesenseBT extends Component {
   constructor() {
@@ -51,9 +54,6 @@ export default class MovesenseBT extends Component {
   }
 
   scanAndConnect() {
-    // this.manager
-    //   .discoverAllServicesAndCharacteristicsForDevice('0C:8C:DC:2E:85:E6')
-    //   .then(data => console.log(data));
     this.manager.startDeviceScan(null, null, (error, device) => {
       this.info('Scanning...');
       if (error) {
@@ -64,30 +64,6 @@ export default class MovesenseBT extends Component {
       if (!found) this.deviceList.push({name: device.name, id: device.id});
     });
   }
-
-  // async test(device) {
-  //   const service = '00001809-0000-1000-8000-00805f9b34fb';
-  //   const characteristicW = '00002a21-0000-1000-8000-00805f9b34fb';
-  //   const characteristicN = '00002a21-0000-1000-8000-00805f9b34fb';
-
-  //   const characteristic = await device.writeCharacteristicWithResponseForService(
-  //     service,
-  //     characteristicW,
-  //     'AQ==' /* 0x01 in hex */,
-  //   );
-
-  //   device.monitorCharacteristicForService(
-  //     service,
-  //     characteristicN,
-  //     (error, characteristic) => {
-  //       if (error) {
-  //         this.error(error.message);
-  //         return;
-  //       }
-  //       this.updateValue(characteristic.uuid, characteristic.value);
-  //     },
-  //   );
-  // }
 
   async connectToDevice(item) {
     console.log(item);
@@ -115,14 +91,14 @@ export default class MovesenseBT extends Component {
     // here I see connected devices services and characteristics UUIDs and there are my hardcoded too!
     console.log(characteristics);
 
-    const service = '00001800-0000-1000-8000-00805f9b34fb';
-    const characteristicW = '00002a1c-0000-1000-8000-00805f9b34fb';
+    const service = '00001809-0000-1000-8000-00805f9b34fb';
+    const characteristicW = '00002a21-0000-1000-8000-00805f9b34fb';
     const characteristicN = '00002a1c-0000-1000-8000-00805f9b34fb';
 
     const characteristic = await device.writeCharacteristicWithResponseForService(
       service,
       characteristicW,
-      'AQ==' /* 0x01 in hex */,
+      'zoY=' /* 0x01 in hex */,
     );
 
     device.monitorCharacteristicForService(
@@ -133,35 +109,110 @@ export default class MovesenseBT extends Component {
           this.error(error.message);
           return;
         }
+        // const bytes = base64.toByteArray(characteristic.value);
+        // const view = new DataView(bytes.buffer);
+        // const value = view.getFloat32();
+
+        // const buffer = new Buffer(characteristic.value, 'base64');
+        // const bufStr = buffer;
+
+        const value = this.b64toBlob(characteristic.value, 'image/jpeg;base64');
+        // console.log('AAAA: ' + characteristic.uuid + ' VALUE: ' + value);
         this.updateValue(characteristic.uuid, characteristic.value);
       },
     );
   }
 
-  async setupNotifications(device) {
-    for (const id in this.sensors) {
-      const service = this.serviceUUID(id);
-      const characteristicW = this.writeUUID(id);
-      const characteristicN = this.notifyUUID(id);
+  atob = input => {
+    const chars =
+      'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
+    let str = input.replace(/=+$/, '');
+    let output = '';
 
-      const characteristic = await device.writeCharacteristicWithResponseForService(
-        service,
-        characteristicW,
-        'AQ==' /* 0x01 in hex */,
-      );
-
-      device.monitorCharacteristicForService(
-        service,
-        characteristicN,
-        (error, characteristic) => {
-          if (error) {
-            this.error(error.message);
-            return;
-          }
-          this.updateValue(characteristic.uuid, characteristic.value);
-        },
+    if (str.length % 4 == 1) {
+      throw new Error(
+        "'atob' failed: The string to be decoded is not correctly encoded.",
       );
     }
+    for (
+      let bc = 0, bs = 0, buffer, i = 0;
+      (buffer = str.charAt(i++));
+      ~buffer && ((bs = bc % 4 ? bs * 64 + buffer : buffer), bc++ % 4)
+        ? (output += String.fromCharCode(255 & (bs >> ((-2 * bc) & 6))))
+        : 0
+    ) {
+      buffer = chars.indexOf(buffer);
+    }
+
+    return output;
+  };
+
+  b64toBlob = (b64Data, contentType = '', sliceSize = 512) => {
+    const byteCharacters = this.atob(b64Data);
+    const byteArrays = [];
+
+    for (let offset = 0; offset < byteCharacters.length; offset += sliceSize) {
+      const slice = byteCharacters.slice(offset, offset + sliceSize);
+
+      const byteNumbers = new Array(slice.length);
+      for (let i = 0; i < slice.length; i++) {
+        byteNumbers[i] = slice.charCodeAt(i);
+      }
+
+      const byteArray = new Uint8Array(byteNumbers);
+
+      byteArrays.push(byteArray);
+    }
+
+    // console.log('LL: ' + byteArrays);
+
+    this.convertUint8ToUintArray16Array(byteArrays[0]);
+
+    const blob = new Blob(byteArrays, {type: contentType});
+    return blob;
+  };
+
+  convertUint8ToUintArray16Array(event) {
+    const value = event;
+    const arr16 = new Uint16Array(10);
+    arr16[0] = (value[1] << 8) + value[0];
+    arr16[1] = (value[3] << 8) + value[2];
+    arr16[2] = (value[5] << 8) + value[4];
+    arr16[3] = (value[7] << 8) + value[6];
+    arr16[4] = (value[9] << 8) + value[8];
+    arr16[5] = (value[11] << 8) + value[10];
+    arr16[6] = (value[13] << 8) + value[12];
+    arr16[7] = (value[15] << 8) + value[14];
+    arr16[8] = (value[17] << 8) + value[16];
+    arr16[9] = (value[19] << 8) + value[18];
+
+    let xAccNy = this.convert16bitIntToFloat(arr16[1]) / 10.0; // 1G accelleration
+    let yAccNy = this.convert16bitIntToFloat(arr16[2]) / 10.0;
+    let zAccNy = this.convert16bitIntToFloat(arr16[3]) / 10.0;
+    let xGyroNy = this.convert16bitIntToFloat(arr16[4]); // microtestla
+    let yGyroNy = this.convert16bitIntToFloat(arr16[5]);
+    let zGyroNy = this.convert16bitIntToFloat(arr16[6]);
+
+    console.log(xAccNy, yAccNy, zAccNy, xGyroNy, yGyroNy, zGyroNy);
+    // console.log('arr: ' + arr16);
+    return arr16;
+  }
+
+  byteToUint8Array(byteArray) {
+    console.log(typeof byteArray);
+    var uint8Array = new Uint8Array(byteArray.length);
+    for (var i = 0; i < uint8Array.length; i++) {
+      console.log('LALAL: ' + byteArray[i]);
+      uint8Array[i] = byteArray[i];
+    }
+
+    return uint8Array;
+  }
+
+  convert16bitIntToFloat(num) {
+    var SPAN = 4000;
+    var NR_SIZE = 65535;
+    return (num * SPAN) / NR_SIZE - SPAN / 2;
   }
 
   render() {
