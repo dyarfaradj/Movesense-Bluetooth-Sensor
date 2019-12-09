@@ -30,6 +30,8 @@ export default class MovesenseBT extends Component {
         1: 'Gyroscope',
       });
     this.deviceList = [];
+
+    this.subscriptionMonitor = null;
   }
 
   info(message) {
@@ -43,6 +45,10 @@ export default class MovesenseBT extends Component {
 
   updateValue(key, value) {
     this.setState({values: {...this.state.values, [key]: value}});
+  }
+
+  componentWillUnmount() {
+    this.manager.stopDeviceScan();
   }
 
   scanAndConnect() {
@@ -65,16 +71,14 @@ export default class MovesenseBT extends Component {
     alert('Connecting to ' + item.name);
     this.setState({scanning: false});
     this.deviceId = item.id;
-
-    const {id} = await this.manager.connectToDevice(item.id);
     this.manager.stopDeviceScan();
+    this.info('Connected to ' + item.name);
+    const {id} = await this.manager.connectToDevice(item.id);
+    this.deviceList = [];
 
     const device = await this.manager.discoverAllServicesAndCharacteristicsForDevice(
       item.id,
     );
-
-    const wasConnected = await device.isConnected();
-    this.deviceList = [];
 
     const services = await device.services();
 
@@ -84,9 +88,6 @@ export default class MovesenseBT extends Component {
       charPromises.map(p => p.catch(e => console.error(e) || e)),
     );
 
-    // here I see connected devices services and characteristics UUIDs and there are my hardcoded too!
-    console.log(characteristics);
-
     const service = '00001809-0000-1000-8000-00805f9b34fb';
     const characteristicW = '00002a21-0000-1000-8000-00805f9b34fb';
     const characteristicN = '00002a1c-0000-1000-8000-00805f9b34fb';
@@ -94,10 +95,10 @@ export default class MovesenseBT extends Component {
     const characteristic = await device.writeCharacteristicWithResponseForService(
       service,
       characteristicW,
-      'hgM=' /* 0x01 in hex */, //zoY=
+      'hgM=',
     );
 
-    device.monitorCharacteristicForService(
+    this.subscriptionMonitor = device.monitorCharacteristicForService(
       service,
       characteristicN,
       (error, characteristic) => {
@@ -208,11 +209,16 @@ export default class MovesenseBT extends Component {
   };
 
   handleStop = async () => {
-    const isConnected = await this.manager.isDeviceConnected(this.deviceId);
-    if (isConnected) {
-      this.manager.cancelDeviceConnection(this.deviceId);
+    //const isConnected = await this.manager.isDeviceConnected(this.deviceId);
+    if (this.deviceId) {
+      this.info('Disconnected from device!');
+      if (this.subscriptionMonitor) {
+        this.subscriptionMonitor.remove();
+      }
+      await this.manager.cancelDeviceConnection(this.deviceId);
       this.deviceList = [];
       this.setState({Cpitch: 0, Croll: 0});
+      this.deviceId = '';
     } else {
       alert('You are not connected to any device!');
     }
