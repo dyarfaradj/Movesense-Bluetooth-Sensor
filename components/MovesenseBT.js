@@ -323,10 +323,13 @@ export default class MovesenseBT extends Component {
 
 const styles = StyleSheet.create({
   listView: {
-    color: 'blue',
-    borderColor: 'red',
-    borderWidth: 1,
-    margin: 20,
+    textAlign: 'center',
+    color: 'white',
+    borderColor: 'green',
+    borderWidth: 5,
+    borderRadius: 5,
+    fontSize: 14,
+    backgroundColor: 'black',
   },
   infoText: {
     fontSize: 22,
