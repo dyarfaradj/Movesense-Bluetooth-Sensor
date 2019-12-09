@@ -19,6 +19,11 @@ export default class MovesenseBT extends Component {
       lastX: 0,
       lastY: 0,
       lastZ: 0,
+      lastGyroX: 0,
+      lastGyroY: 0,
+      lastGyroZ: 0,
+      Cpitch: 0,
+      Cpitch2: 0,
     };
     this.sensors = {
       0: 'Accelerometer',
@@ -160,20 +165,29 @@ export default class MovesenseBT extends Component {
     arr16[8] = (value[17] << 8) + value[16];
     arr16[9] = (value[19] << 8) + value[18];
 
-    let xAccNy = this.convert16bitIntToFloat(arr16[1]) / 10.0; // 1G accelleration
-    let yAccNy = this.convert16bitIntToFloat(arr16[2]) / 10.0;
-    let zAccNy = this.convert16bitIntToFloat(arr16[3]) / 10.0;
+    let xAccNy = this.convert16bitIntToFloat(arr16[1]); // 1G accelleration
+    let yAccNy = this.convert16bitIntToFloat(arr16[2]);
+    let zAccNy = this.convert16bitIntToFloat(arr16[3]);
     let xGyroNy = this.convert16bitIntToFloat(arr16[4]); // microtestla
     let yGyroNy = this.convert16bitIntToFloat(arr16[5]);
     let zGyroNy = this.convert16bitIntToFloat(arr16[6]);
 
+    let calcValued = this.calculateValue(
+      xAccNy,
+      yAccNy,
+      zAccNy,
+      xGyroNy,
+      yGyroNy,
+      zGyroNy,
+    );
+
     this.setState({
-      xAccNy: xAccNy,
-      yAccNy: yAccNy,
-      zAccNy: zAccNy,
-      xGyroNy: xGyroNy,
-      yGyroNy: yGyroNy,
-      zGyroNy: zGyroNy,
+      xAccNy: calcValued.xAccNy,
+      yAccNy: calcValued.yAccNy,
+      zAccNy: calcValued.zAccNy,
+      xGyroNy: calcValued.xGyroNy,
+      yGyroNy: calcValued.yGyroNy,
+      zGyroNy: calcValued.zGyroNy,
     });
 
     //console.log(xAccNy, yAccNy, zAccNy, xGyroNy, yGyroNy, zGyroNy);
@@ -221,31 +235,49 @@ export default class MovesenseBT extends Component {
     }
   };
 
-  calculateValue(x, y, z, yGyroNy) {
-    let a = 0.1;
-    x = (1 - a) * lastX + a * x;
-    y = (1 - a) * lastY + a * y;
-    z = (1 - a) * lastZ + a * z;
-    this.setState({lastX: x, lastY: y, lastZ: z});
+  calculateValue(xAccNy, yAccNy, zAccNy, xGyroNy, yGyroNy, zGyroNy) {
+    let a = 0.9;
+    xAccNy = (1 - a) * this.state.lastX + a * xAccNy;
+    yAccNy = (1 - a) * this.state.lastY + a * yAccNy;
+    zAccNy = (1 - a) * this.state.lastZ + a * zAccNy;
+    this.setState({lastX: xAccNy, lastY: yAccNy, lastZ: zAccNy});
+
+    let b = 0.9;
+    xGyroNy = (1 - b) * this.state.lastGyroX + b * xGyroNy;
+    yGyroNy = (1 - b) * this.state.lastGyroY + b * yGyroNy;
+    zGyroNy = (1 - b) * this.state.lastGyroZ + b * zGyroNy;
+    this.setState({lastGyroX: xGyroNy, lastGyroY: yGyroNy, lastGyroZ: zGyroNy});
 
     let beta = 0.1;
     let dT = 1 / 52;
-    let pitch = (180 * Math.atan(x / sqrt(y * y + z * z))) / Math.PI;
+    let pitch =
+      (180 * Math.atan(xAccNy / Math.sqrt(yAccNy * yAccNy + zAccNy * zAccNy))) /
+      Math.PI;
+    let roll =
+      (180 * Math.atan(yAccNy / Math.sqrt(xAccNy * xAccNy + zAccNy * zAccNy))) /
+      Math.PI;
     this.setState({
-      Cpitch: (1 - beta) * (this.state.Cpitch - dT * yGyroNy) + beta * pitch,
+      Cpitch: (
+        (1 - beta) * (this.state.Cpitch - dT * xGyroNy) +
+        beta * pitch
+      ).toFixed(0),
+      Cpitch2: (
+        (1 - beta) * (this.state.Cpitch2 - dT * yGyroNy) +
+        beta * roll
+      ).toFixed(0),
     });
-    return this.state.Cpitch;
+
+    return {xAccNy, yAccNy, zAccNy, xGyroNy, yGyroNy, zGyroNy};
   }
 
   render() {
     let {xAccNy, yAccNy, zAccNy, xGyroNy, yGyroNy, zGyroNy} = this.state;
-    let tiltVal = 0; //this.calculateValue();
-    xAccNy = parseFloat(xAccNy).toFixed(3);
-    yAccNy = parseFloat(yAccNy).toFixed(3);
-    zAccNy = parseFloat(zAccNy).toFixed(3);
-    xGyroNy = parseFloat(xGyroNy).toFixed(3);
-    yGyroNy = parseFloat(yGyroNy).toFixed(3);
-    zGyroNy = parseFloat(zGyroNy).toFixed(3);
+    xAccNy = parseFloat(xAccNy).toFixed(0);
+    yAccNy = parseFloat(yAccNy).toFixed(0);
+    zAccNy = parseFloat(zAccNy).toFixed(0);
+    xGyroNy = parseFloat(xGyroNy).toFixed(0);
+    yGyroNy = parseFloat(yGyroNy).toFixed(0);
+    zGyroNy = parseFloat(zGyroNy).toFixed(0);
     return (
       <View>
         <Text>{this.state.info}</Text>
@@ -287,7 +319,8 @@ export default class MovesenseBT extends Component {
           })}
         <Button onPress={this.handleStart} title="Start scan!" color="green" />
         <Button onPress={this.handleStop} title="Stop!" color="red" />
-        <Text>{tiltVal}</Text>
+        <Text>Pitch: {this.state.Cpitch}°</Text>
+        <Text>Roll: {this.state.Cpitch2}°</Text>
       </View>
     );
   }
