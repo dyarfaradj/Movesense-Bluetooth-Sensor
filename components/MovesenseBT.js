@@ -17,7 +17,7 @@ export default class MovesenseBT extends Component {
       yGyroNy: 0,
       zGyroNy: 0,
       Cpitch: 0,
-      Cpitch2: 0,
+      Croll: 0,
     };
     this.lastX = 0;
     this.lastY = 0;
@@ -104,7 +104,7 @@ export default class MovesenseBT extends Component {
           this.error(error.message);
           return;
         }
-        this.b64toBlob(characteristic.value, 'image/jpeg;base64');
+        this.b64toBlob(characteristic.value);
       },
     );
   }
@@ -133,7 +133,7 @@ export default class MovesenseBT extends Component {
     return output;
   };
 
-  b64toBlob = (b64Data, contentType = '', sliceSize = 512) => {
+  b64toBlob = (b64Data, sliceSize = 20) => {
     const byteCharacters = this.atob(b64Data);
     const byteArrays = [];
 
@@ -148,9 +148,6 @@ export default class MovesenseBT extends Component {
     }
 
     this.convertUint8ToUintArray16Array(byteArrays[0]);
-
-    const blob = new Blob(byteArrays, {type: contentType});
-    return blob;
   };
 
   convertUint8ToUintArray16Array(event) {
@@ -175,7 +172,6 @@ export default class MovesenseBT extends Component {
     let zGyroNy = this.convert16bitIntToFloat(arr16[6]);
 
     this.calculateValue(xAccNy, yAccNy, zAccNy, xGyroNy, yGyroNy, zGyroNy);
-
     return arr16;
   }
 
@@ -219,7 +215,7 @@ export default class MovesenseBT extends Component {
   };
 
   calculateValue(xAccNy, yAccNy, zAccNy, xGyroNy, yGyroNy, zGyroNy) {
-    let a = 0.9;
+    let a = 0.1;
     xAccNy = (1 - a) * this.lastX + a * xAccNy;
     yAccNy = (1 - a) * this.lastY + a * yAccNy;
     zAccNy = (1 - a) * this.lastZ + a * zAccNy;
@@ -238,18 +234,18 @@ export default class MovesenseBT extends Component {
     let beta = 0.1;
     let dT = 1 / 52;
     let pitch =
-      (180 * Math.atan(xAccNy / Math.sqrt(yAccNy * yAccNy + zAccNy * zAccNy))) /
-      Math.PI;
+      Math.atan(xAccNy / Math.sqrt(yAccNy * yAccNy + zAccNy * zAccNy)) *
+      (180 / Math.PI);
     let roll =
-      (180 * Math.atan(yAccNy / Math.sqrt(xAccNy * xAccNy + zAccNy * zAccNy))) /
-      Math.PI;
+      Math.atan(yAccNy / Math.sqrt(xAccNy * xAccNy + zAccNy * zAccNy)) *
+      (180 / Math.PI);
     this.setState({
       Cpitch: (
         (1 - beta) * (this.state.Cpitch - dT * xGyroNy) +
         beta * pitch
       ).toFixed(0),
-      Cpitch2: (
-        (1 - beta) * (this.state.Cpitch2 - dT * yGyroNy) +
+      Croll: (
+        (1 - beta) * (this.state.Croll - dT * yGyroNy) +
         beta * roll
       ).toFixed(0),
     });
@@ -269,7 +265,7 @@ export default class MovesenseBT extends Component {
         <Text style={styles.metaText}>
           {this.sensors[0] +
             '\n' +
-            ': X: ' +
+            ' X: ' +
             xAccNy +
             ' Y: ' +
             yAccNy +
@@ -279,7 +275,7 @@ export default class MovesenseBT extends Component {
         <Text style={styles.metaText}>
           {this.sensors[1] +
             '\n' +
-            ': X: ' +
+            ' X: ' +
             xGyroNy +
             ' Y: ' +
             yGyroNy +
@@ -302,7 +298,7 @@ export default class MovesenseBT extends Component {
         <Button onPress={this.handleStart} title="Start scan!" color="green" />
         <Button onPress={this.handleStop} title="Stop!" color="red" />
         <Text style={styles.textDisplay}>Pitch: {this.state.Cpitch}°</Text>
-        <Text style={styles.textDisplay}>Roll: {this.state.Cpitch2}°</Text>
+        <Text style={styles.textDisplay}>Roll: {this.state.Croll}°</Text>
       </View>
     );
   }
