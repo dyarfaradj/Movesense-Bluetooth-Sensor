@@ -1,13 +1,13 @@
 import React, {Component} from 'react';
-import {Platform, View, Text, Button} from 'react-native';
+import {Platform, View, Text, StyleSheet, Button} from 'react-native';
 import {BleManager} from 'react-native-ble-plx';
 
 export default class MovesenseBT extends Component {
   constructor() {
     super();
     this.manager = new BleManager();
+    this.deviceId = '';
     this.state = {
-      deviceId: '',
       scanning: false,
       info: '',
       xAccNy: 0,
@@ -16,19 +16,19 @@ export default class MovesenseBT extends Component {
       xGyroNy: 0,
       yGyroNy: 0,
       zGyroNy: 0,
-      lastX: 0,
-      lastY: 0,
-      lastZ: 0,
-      lastGyroX: 0,
-      lastGyroY: 0,
-      lastGyroZ: 0,
       Cpitch: 0,
       Cpitch2: 0,
     };
-    this.sensors = {
-      0: 'Accelerometer',
-      1: 'Gyroscope',
-    };
+    this.lastX = 0;
+    this.lastY = 0;
+    (this.lastZ = 0),
+      (this.lastGyroX = 0),
+      (this.lastGyroY = 0),
+      (this.lastGyroZ = 0),
+      (this.sensors = {
+        0: 'Accelerometer',
+        1: 'Gyroscope',
+      });
     this.deviceList = [];
   }
 
@@ -38,6 +38,7 @@ export default class MovesenseBT extends Component {
 
   error(message) {
     this.setState({info: 'ERROR: ' + message});
+    this.manager.cancelDeviceConnection(this.deviceId);
   }
 
   updateValue(key, value) {
@@ -62,7 +63,8 @@ export default class MovesenseBT extends Component {
 
   async connectToDevice(item) {
     alert('Connecting to ' + item.name);
-    this.setState({deviceId: item.id, scanning: false});
+    this.setState({scanning: false});
+    this.deviceId = item.id;
 
     const {id} = await this.manager.connectToDevice(item.id);
 
@@ -172,25 +174,8 @@ export default class MovesenseBT extends Component {
     let yGyroNy = this.convert16bitIntToFloat(arr16[5]);
     let zGyroNy = this.convert16bitIntToFloat(arr16[6]);
 
-    let calcValued = this.calculateValue(
-      xAccNy,
-      yAccNy,
-      zAccNy,
-      xGyroNy,
-      yGyroNy,
-      zGyroNy,
-    );
+    this.calculateValue(xAccNy, yAccNy, zAccNy, xGyroNy, yGyroNy, zGyroNy);
 
-    this.setState({
-      xAccNy: calcValued.xAccNy,
-      yAccNy: calcValued.yAccNy,
-      zAccNy: calcValued.zAccNy,
-      xGyroNy: calcValued.xGyroNy,
-      yGyroNy: calcValued.yGyroNy,
-      zGyroNy: calcValued.zGyroNy,
-    });
-
-    //console.log(xAccNy, yAccNy, zAccNy, xGyroNy, yGyroNy, zGyroNy);
     return arr16;
   }
 
@@ -226,27 +211,29 @@ export default class MovesenseBT extends Component {
   };
 
   handleStop = async () => {
-    const isConnected = await this.manager.isDeviceConnected(
-      this.state.deviceId,
-    );
+    const isConnected = await this.manager.isDeviceConnected(this.deviceId);
     if (isConnected) {
-      this.manager.cancelDeviceConnection(this.state.deviceId);
+      this.manager.cancelDeviceConnection(this.deviceId);
       this.deviceList = [];
     }
   };
 
   calculateValue(xAccNy, yAccNy, zAccNy, xGyroNy, yGyroNy, zGyroNy) {
     let a = 0.9;
-    xAccNy = (1 - a) * this.state.lastX + a * xAccNy;
-    yAccNy = (1 - a) * this.state.lastY + a * yAccNy;
-    zAccNy = (1 - a) * this.state.lastZ + a * zAccNy;
-    this.setState({lastX: xAccNy, lastY: yAccNy, lastZ: zAccNy});
+    xAccNy = (1 - a) * this.lastX + a * xAccNy;
+    yAccNy = (1 - a) * this.lastY + a * yAccNy;
+    zAccNy = (1 - a) * this.lastZ + a * zAccNy;
+    this.lastX = xAccNy;
+    this.lastY = yAccNy;
+    this.lastZ = zAccNy;
 
     let b = 0.9;
-    xGyroNy = (1 - b) * this.state.lastGyroX + b * xGyroNy;
-    yGyroNy = (1 - b) * this.state.lastGyroY + b * yGyroNy;
-    zGyroNy = (1 - b) * this.state.lastGyroZ + b * zGyroNy;
-    this.setState({lastGyroX: xGyroNy, lastGyroY: yGyroNy, lastGyroZ: zGyroNy});
+    xGyroNy = (1 - b) * this.lastGyroX + b * xGyroNy;
+    yGyroNy = (1 - b) * this.lastGyroY + b * yGyroNy;
+    zGyroNy = (1 - b) * this.lastGyroZ + b * zGyroNy;
+    this.lastGyroX = xGyroNy;
+    this.lastGyroY = yGyroNy;
+    this.lastGyroZ = zGyroNy;
 
     let beta = 0.1;
     let dT = 1 / 52;
@@ -266,8 +253,6 @@ export default class MovesenseBT extends Component {
         beta * roll
       ).toFixed(0),
     });
-
-    return {xAccNy, yAccNy, zAccNy, xGyroNy, yGyroNy, zGyroNy};
   }
 
   render() {
@@ -281,8 +266,9 @@ export default class MovesenseBT extends Component {
     return (
       <View>
         <Text>{this.state.info}</Text>
-        <Text>
+        <Text style={styles.metaText}>
           {this.sensors[0] +
+            '\n' +
             ': X: ' +
             xAccNy +
             ' Y: ' +
@@ -290,8 +276,9 @@ export default class MovesenseBT extends Component {
             ' Z: ' +
             zAccNy}
         </Text>
-        <Text>
+        <Text style={styles.metaText}>
           {this.sensors[1] +
+            '\n' +
             ': X: ' +
             xGyroNy +
             ' Y: ' +
@@ -299,17 +286,12 @@ export default class MovesenseBT extends Component {
             ' Z: ' +
             zGyroNy}
         </Text>
-        <Text>Device list: </Text>
+        <Text style={styles.deviceList}>Device list: </Text>
         {this.deviceList &&
           this.deviceList.map((item, i) => {
             return (
               <Text
-                style={{
-                  color: 'blue',
-                  borderColor: 'red',
-                  borderWidth: 1,
-                  margin: 20,
-                }}
+                style={styles.listView}
                 key={i}
                 onPress={() => this.connectToDevice(item)}>
                 {' '}
@@ -319,9 +301,30 @@ export default class MovesenseBT extends Component {
           })}
         <Button onPress={this.handleStart} title="Start scan!" color="green" />
         <Button onPress={this.handleStop} title="Stop!" color="red" />
-        <Text>Pitch: {this.state.Cpitch}°</Text>
-        <Text>Roll: {this.state.Cpitch2}°</Text>
+        <Text style={styles.textDisplay}>Pitch: {this.state.Cpitch}°</Text>
+        <Text style={styles.textDisplay}>Roll: {this.state.Cpitch2}°</Text>
       </View>
     );
   }
 }
+
+const styles = StyleSheet.create({
+  listView: {
+    color: 'blue',
+    borderColor: 'red',
+    borderWidth: 1,
+    margin: 20,
+  },
+  textDisplay: {
+    fontSize: 30,
+    textAlign: 'center',
+  },
+  metaText: {
+    textAlign: 'center',
+  },
+  deviceList: {
+    textAlign: 'center',
+    marginTop: 30,
+    marginBottom: 30,
+  },
+});
