@@ -271,7 +271,7 @@ export default class MovesenseBT extends Component {
     zGyroNy = parseFloat(zGyroNy).toFixed(0);
     return (
       <View>
-        <Text>{this.state.info}</Text>
+        <Text style={styles.infoText}>INFO: {this.state.info}</Text>
         <Text style={styles.metaText}>
           {this.sensors[0] +
             '\n' +
@@ -305,10 +305,17 @@ export default class MovesenseBT extends Component {
               </Text>
             );
           })}
-        <Button onPress={this.handleStart} title="Start scan!" color="green" />
-        <Button onPress={this.handleStop} title="Stop!" color="red" />
+
         <Text style={styles.textDisplay}>Pitch: {this.state.Cpitch}°</Text>
         <Text style={styles.textDisplay}>Roll: {this.state.Croll}°</Text>
+        <View style={styles.buttonGroup}>
+          <View style={styles.buttonV}>
+            <Button onPress={this.handleStart} title="Start scan!" />
+          </View>
+          <View style={styles.buttonV}>
+            <Button onPress={this.handleStop} title="Stop!" color="#f194ff" />
+          </View>
+        </View>
       </View>
     );
   }
@@ -321,6 +328,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     margin: 20,
   },
+  infoText: {
+    fontSize: 22,
+    textAlign: 'center',
+  },
   textDisplay: {
     fontSize: 30,
     textAlign: 'center',
@@ -332,5 +343,12 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 30,
     marginBottom: 30,
+  },
+  buttonGroup: {
+    marginTop: 50,
+    margin: 70,
+  },
+  buttonV: {
+    marginVertical: 10,
   },
 });
