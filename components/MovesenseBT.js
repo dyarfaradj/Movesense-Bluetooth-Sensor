@@ -67,6 +67,7 @@ export default class MovesenseBT extends Component {
     this.deviceId = item.id;
 
     const {id} = await this.manager.connectToDevice(item.id);
+    this.manager.stopDeviceScan();
 
     const device = await this.manager.discoverAllServicesAndCharacteristicsForDevice(
       item.id,
@@ -211,6 +212,9 @@ export default class MovesenseBT extends Component {
     if (isConnected) {
       this.manager.cancelDeviceConnection(this.deviceId);
       this.deviceList = [];
+      this.setState({Cpitch: 0, Croll: 0});
+    } else {
+      alert('You are not connected to any device!');
     }
   };
 
