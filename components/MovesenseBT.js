@@ -209,7 +209,6 @@ export default class MovesenseBT extends Component {
   };
 
   handleStop = async () => {
-    //const isConnected = await this.manager.isDeviceConnected(this.deviceId);
     if (this.deviceId) {
       this.info('Disconnected from device!');
       if (this.subscriptionMonitor) {
@@ -330,6 +329,7 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     fontSize: 14,
     backgroundColor: 'black',
+    marginBottom: 10,
   },
   infoText: {
     fontSize: 22,
